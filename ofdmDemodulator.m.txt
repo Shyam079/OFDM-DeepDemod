@@ -1,0 +1,20 @@
+function[ofdmDemodOut] = ofdmDemodulator(X, nfft, cpLen, useInBuilt)
+
+if(useInBuilt)
+    ofdmDemodOut = ofdmdemod(X, nfft, cpLen);
+    return
+end
+
+%% Remove CP
+XwoCP = X(cpLen + 1 : end, :);
+
+%% Serial to Parallel
+parallelX = XwoCP.';
+
+%% FFT
+fftX = fft(parallelX, nfft);
+
+%% Parallel to Serial
+serialX = fftX.';
+ofdmDemodOut = serialX;
+end

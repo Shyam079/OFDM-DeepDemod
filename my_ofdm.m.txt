@@ -1,0 +1,78 @@
+%% OFDM
+clc;
+clear;
+close all;
+%% Initialization
+    numSubcarr = 8192; % INPUT
+    M = 2; % BPSK
+    bitsPerSymbol = log2(M);
+    %% Null Subcarriers
+        % numGBSubcarr = numSubcarr / 16; % must fall withing [0, (Nfft/2)-1]
+        % gbStart = 1 : numGBSubcarr;
+        % gbEnd = (numSubcarr - numGBSubcarr + 1) : numSubcarr;
+        % if (mod(numSubcarr, 2) == 0)
+        %     dcNullIndx = (numSubcarr / 2) + 1;
+        % else
+        %     dcNullindx = (numSubcarr + 1) / 2;
+        % end
+        % nullIndx = [gbStart dcNullIndx gbEnd]';
+    %% Data Subcarriers
+        numDataSubcarr = numSubcarr ;%- length(nullIndx);
+        numBits = numDataSubcarr * bitsPerSymbol;
+    %% SNR
+        snrStart = -20;
+        snrIncrement = 1;
+        snrEnd = 10;
+        num = (snrEnd - snrStart) + 1;
+        res = zeros(num, 2);
+    %% Multipath Channel
+        delay = zeros(7, 1);                         % delay of 1 sample
+        mpChannel = [0.8; delay; -0.5; delay; 0.34]; % (as FIR filter)
+        %stem(mpChannel)
+        cpLen = 32;  % >= impulse reponse of multipath
+%% Simulation
+    %% Source Bits
+    data = randi([0,1], numBits, 1);
+    %% BPSK Mod
+    bpskModOut = pskmod(data,M,InputType='bit');
+    %% OFDM Mod
+    ofdmModOut = ofdmModulator(bpskModOut, numSubcarr, cpLen);%, nullIndx);
+    %% 
+    i=1;
+    for SNR = snrStart:snrIncrement:snrEnd
+        %% Multipath
+        mpChanOut = filter(mpChannel, 1, ofdmModOut);
+        %% AWGN
+        chanOut = awgn(mpChanOut,SNR,"measured");
+        %% OFDM Demod
+        ofdmDemodOut = ofdmDemodulator(chanOut, numSubcarr, cpLen, cpLen);%, nullIndx);
+        %scatterplot(ofdmDemodOut)
+        %% Equalization
+        mpChanFreq = fftshift(fft(mpChannel, numSubcarr));
+        %mpChanFreq(nullIndx) = [];
+        eqOut = ofdmDemodOut ./ mpChanFreq;
+        %scatterplot(eqOut)
+        %% BPSK Demod
+        bpskDemodOut = pskdemod(ofdmDemodOut, M, OutputType = 'bit');
+        %% BER
+        numBitErrors = nnz(data ~= bpskDemodOut);
+        BER = numBitErrors / numBits;
+        res(i, 1) = SNR;
+        res(i, 2) = BER;
+        i = i + 1;
+    end
+%% Theoretical Calculations
+    EbNo = res(:, 1) - 10 * log10(bitsPerSymbol); %- 10 * log10(numBits / (bitsPerSymbol * numSubcarr));
+    berTheory = berawgn(EbNo, 'psk', M, 'nondiff');
+%% Eb/No (dB) vs Bit Error Rate
+    figure
+    semilogy(res(:,1), res(:,2), '*')
+    hold on
+    semilogy(EbNo, berTheory) 
+    legend('Simulation','Theory')
+    xlabel('Eb/No (dB)')
+    ylabel('Bit Error Rate')
+    title("Eb/No (dB) vs Bit Error Rate")
+    xlim([snrStart snrEnd])
+    grid on
+    hold off

@@ -1,0 +1,21 @@
+function [bpskDemodOut] = bpskDemodulator(X, useInBuilt)
+M = 2;
+
+if(useInBuilt)
+    bpskDemodOut = pskdemod(X, M, OutputType = 'bit');
+    return
+end
+
+re = real(X);
+%bpskDemodOut = (1 - (M / (2 * pi)) * acos(-re));
+bpskDemodOut = re;
+len = length (re);
+for i=1:len
+    if re(i)>=0
+        bpskDemodOut(i)=0;
+    else 
+        bpskDemodOut(i)=1;
+    end
+end
+
+end

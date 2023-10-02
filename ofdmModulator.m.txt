@@ -1,0 +1,21 @@
+function[ofdmModOut] = ofdmModulator(X, nfft, cplen, useInBuilt)
+
+if(useInBuilt)
+    ofdmModOut = ofdmmod(X,nfft,cplen);
+    return
+end
+
+%% Serial to Parallel
+parallelX = X.';
+
+%% IFFT
+ifftX = ifft(parallelX, nfft);
+
+%% Parallel to Serial
+serialX = ifftX.';
+
+%% Adding Cyclic Prefix
+CP = serialX(end - cplen + 1 : end, :);
+cp_serialX = [CP; serialX];
+ofdmModOut = cp_serialX;
+end

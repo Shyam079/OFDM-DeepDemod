@@ -1,0 +1,10 @@
+function bpskModOut = bpskModulator(X, useInBuilt)
+M = 2;
+if (useInBuilt)
+    bpskModOut = pskmod(X, M, InputType = 'bit');
+else
+    re = cos((2 * pi / M) * (X - 1));
+    im = sin((2 * pi / M) * (X - 1));
+    bpskModOut = -(re + 1i * im);
+end
+end
